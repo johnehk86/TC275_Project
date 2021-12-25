@@ -110,7 +110,6 @@ extern float32_t fSenseMotorRpm;
 void DrvAsc_Test1(void)
 {
     uint32_t temp = 0u;
-    static uint16_t TestCnt1 = 0u;
     
     g_AsclinAsc.count = 1;
 

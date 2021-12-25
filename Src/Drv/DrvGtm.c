@@ -5,6 +5,8 @@
 #include "SysSe/Bsp/Bsp.h"
 #include "Gtm/Tom/Timer/IfxGtm_Tom_Timer.h"
 #include "Gtm/Tom/PwmHl/IfxGtm_Tom_PwmHl.h"
+#include "IfxStm.h"
+
 
 /*----------------------------------------------------------------*/
 /*                        Define                                        */
@@ -14,6 +16,7 @@
 //#define TOM_BASE_FREQ    (100000000.0f)
 #define PWM_HZ           (200.0f)
 #define PWM_PERIOD_CNT   TOM_BASE_FREQ/PWM_HZ
+#define STM_CLOCK_HZ    100.0f /*100MHz*/ 
 
 
 /*----------------------------------------------------------------*/
@@ -52,6 +55,8 @@ uint32_t u32nuMyTestPwmDuty = 500u; /*Unit: 0.1%, 500 -> 50.0% duty*/
 float32_t fMyTestPwmDuty = 0.5f;
 uint32_t ulPulseCnt = 0u;
 
+extern uint8_t gulUltraStartFlag;
+float32_t fUltraDistance = 0.0f;
 
 /*----------------------------------------------------------------*/
 /*                        Functions                                    */
@@ -63,8 +68,29 @@ IFX_INTERRUPT(TIM0_IntHandler, 0, 200);
 /*---------------------Interrupt Service Routine--------------------------*/
 void TIM0_IntHandler(void)
 {
+    static uint32_t ulStartStamp = 0u;
+    static uint32_t ulEndStamp = 0u;
+    float32_t fResultTemp = 0.0f;
+
+    
     IfxCpu_enableInterrupts();
     ulPulseCnt++;
+    if(gulUltraStartFlag == 1u)
+    {
+        ulStartStamp = STM0_TIM0.U;
+        gulUltraStartFlag = 2u;
+    }
+    else if(gulUltraStartFlag == 2u)
+    {
+        ulEndStamp = STM0_TIM0.U;
+        fResultTemp = (float32_t)(ulEndStamp - ulStartStamp)/STM_CLOCK_HZ;
+        fUltraDistance = fResultTemp/29.0f/2.0f;
+        gulUltraStartFlag = 0u;
+    }
+    else
+    {
+        /*No Code*/
+    }
 }
 
 /*---------------------Test Code--------------------------*/
@@ -113,6 +139,8 @@ void DrvGtmInit(void)
     
     /*Tom1 Init*/
     GtmTom1Init();
+    /*Tim0 Init*/
+    GtmTim0Init();
 
     /*enable interrupts again*/
     IfxCpu_restoreInterrupts(interruptState);
@@ -156,7 +184,7 @@ static void GtmTom1Init(void)
     GTM_TOM1_TGC1_GLB_CTRL.B.HOST_TRIG = 1u;  
 }
 
-#if 0
+
 static void GtmTim0Init(void)
 {
     float32_t temp = 0.0f;
@@ -164,8 +192,8 @@ static void GtmTim0Init(void)
     IfxGtm_PinMap_setTimTin(&IfxGtm_TIM0_0_TIN32_P33_10_IN, IfxPort_InputMode_pullDown);
 
     GTM_TIM0_CH0_CTRL.B.TIM_MODE = 2u; 
-    GTM_TIM0_CH0_CTRL.B.ISL = 0u;
-    GTM_TIM0_CH0_CTRL.B.DSL = 1u;
+    GTM_TIM0_CH0_CTRL.B.ISL = 1u;
+    //GTM_TIM0_CH0_CTRL.B.DSL = 1u;
 
     GTM_TIM0_CH0_CTRL.B.FLT_EN = 0;
     //temp = 2.0f * TOM_BASE_FREQ;
@@ -181,4 +209,3 @@ static void GtmTim0Init(void)
     GTM_IRQ_MODE.B.IRQ_MODE = 2;
     GTM_TIM0_CH0_IRQ_MODE.B.IRQ_MODE = 2;    
 }
-#endif

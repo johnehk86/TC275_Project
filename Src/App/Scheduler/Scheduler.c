@@ -69,7 +69,8 @@ static void AppNoTimeTask(void)
 /*AppTask 1ms*/
 static void AppTask1ms(void)
 {
-
+    DrvAdc_GetAdcRawGroup0();
+    Unit_UltraSenseTrig();
 }
 
 
@@ -83,10 +84,12 @@ static void AppTask5ms(void)
 /*AppTask 10ms*/
 static void AppTask10ms(void)
 {
-    float32_t fDuty = 0.5f;
-    DrvGtmPwmTest(fDuty,fDuty,fDuty,fDuty);
-    //Unit_TestControl();    
     Unit_WirelessControl();
+
+    #if 0
+    Unit_TestControl();
+    Unit_UltraTest();
+    #endif
 }
 
 /*AppTask 50ms*/
@@ -98,8 +101,7 @@ static void AppTask50ms(void)
 /*AppTask 100ms*/
 static void AppTask100ms(void)
 {
-    VadcAutoScanDemo_run();
-    VadcBackgroundScanDemo_run();
+
 }
 
 /*AppTask 200ms*/

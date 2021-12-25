@@ -4,6 +4,7 @@
 #include "MotorControl.h"
 #include "MidDio.h"
 #include "DrvGtm.h"
+#include "MidAdc.h"
 
 /*----------------------------------------------------------------*/
 /*                        Define                                        */
@@ -29,70 +30,71 @@ extern uint32_t gu32nuAscRxData;
 uint8_t u8nuTestInput = 0u;
 float32_t fSenseMotorRpm;
 
-
+uint8_t gulUltraStartFlag = 0u;
+extern float32_t fUltraDistance;
 /*----------------------------------------------------------------*/
 /*                        Functions                                    */
 /*----------------------------------------------------------------*/
-#if 0
-float32_t fPwmDuty = 0.5f;    
-float32_t fSenseMotorRpm = 0.0f;
-uint32_t ulRpmRef =50u;
-uint32_t ulPGain = 3u; 
-uint32_t ulIGain = 12u;
+void Unit_UltraSenseTrig(void)
+{
+    static uint32_t ulUltraSenseCnt = 0u;
 
-extern uint32_t gu32nuAscRxData;
-extern uint32_t ulPulseCnt;
-extern uint32_t gu32nuRxFlag;
-
-void MotorFeedbackController(void)
-{            
-    static int32_t lProportionalControlInput = 0;
-    static int32_t lIntegralControlInput = 0;
-    static int32_t lIntegralControlOld = 0;
-    static uint32_t ulSamplingFrequency = 10u; /*100ms*/
-
-    int32_t g_nError = 0;
-    int32_t g_nControlInput = 0;
-
-    fSenseMotorRpm = ((float32_t)ulPulseCnt*60.0f*10.0f)/(8.0f*120.0f);
-    ulPulseCnt = 0u;
-
-    /*PID Contorller*/
-    g_nError =((int32_t)ulRpmRef- (int32_t)fSenseMotorRpm); 		    
-    lProportionalControlInput = (int32_t)ulPGain*g_nError/10;	// Not to express the gain as float -> g_nPGain/10						
-
-    lIntegralControlInput = lIntegralControlOld + ((int32_t)ulIGain*g_nError/(int32_t)ulSamplingFrequency/10);	
-    g_nControlInput = (lProportionalControlInput + lIntegralControlInput);  //PID control input	 
-    lIntegralControlOld = lIntegralControlInput;								
-
-    if(lIntegralControlOld > 80u) 
+    if(ulUltraSenseCnt == 0u)
     {
-        lIntegralControlOld = 80u; //Limit accumulated value by I gain
-    }     
-
-    if(g_nControlInput >= 80u)
+        gulUltraStartFlag = 1u;
+        MidDio_SetUltraTrig(1u);
+    }
+    else if(ulUltraSenseCnt == 1u)
     {
-        g_nControlInput =80u;  //Limit control input (0<=contorl input<100)  
-    }    
-    else if(g_nControlInput <= 0u)
-    {
-        g_nControlInput = 0u;    
+        MidDio_SetUltraTrig(0u);
     }
     else
     {
         /*No Code*/
     }
 
-    /*Gtm PWM Test*/
-    fPwmDuty = (float32_t)g_nControlInput/100.0f;
-    DrvGtmPwmTest(fPwmDuty,fPwmDuty,fPwmDuty,fPwmDuty);  	    	  
+    ulUltraSenseCnt++;
+   
+    if(ulUltraSenseCnt >= 100u)
+    {
+        ulUltraSenseCnt = 0u;
+        gulUltraStartFlag = 0u;
+    }
 }
-#endif
 
-void Unit_WirelessControl(void)
+
+void Unit_UltraTest(void)
 {
     uint8_t u8nuWirelessCmd = 0u;
+    float32_t fDuty =0.5f;
     
+    if(fUltraDistance > 50.0f)
+    {
+        fDuty = 0.5f;
+    }
+    else if(fUltraDistance > 30.0f)
+    {
+    fDuty = 0.2f;
+
+    }
+    else if(fUltraDistance > 10.0f)
+    {
+    fDuty = 0.1f;
+
+    }
+    else if(fUltraDistance > 5.0f)
+    {
+    fDuty = 0.1f;
+
+    }
+    else
+    {
+        fDuty = 0.0f;
+        gu32nuAscRxData = 's';
+    }
+
+    DrvGtmPwmTest(fDuty,fDuty,fDuty,fDuty);
+
     u8nuWirelessCmd = (uint8_t)gu32nuAscRxData;
     
     if(u8nuWirelessCmd == 'w')    /*Forward*/
@@ -124,8 +126,164 @@ void Unit_WirelessControl(void)
     {
         /*No Code*/
     }  
+
 }
 
+void Unit_WirelessControl(void)
+{
+    uint8_t u8nuWirelessCmd = 0u;
+    SensorAdcRaw* pstSensorAdcRaw = MidAdc_GetAdcGroup0SenseRaw();
+    static uint8_t ucWarningFlag = 0u;
+    static uint8_t ucWarningUltraFlag = 0u;
+    static uint8_t ucFirstDetectionFlag = 0u;
+    static uint8_t ucFirstUltraDetectionFlag = 0u;
+    float32_t fDuty =0.35f;      
+
+    if(pstSensorAdcRaw->InfRaySense1_Raw >= 2200u || pstSensorAdcRaw->InfRaySense2_Raw >= 2200u)
+    {
+        if(ucFirstDetectionFlag == 0u)
+        {
+            if(pstSensorAdcRaw->InfRaySense1_Raw > pstSensorAdcRaw->InfRaySense2_Raw) 
+            {
+                u8nuWirelessCmd = 'a'; /*TurnLeft*/
+            }
+            else
+            {
+                u8nuWirelessCmd = 'd'; /*TurnRight*/
+            }
+            ucFirstDetectionFlag = 1u;
+            ucWarningFlag = 1u;
+        }
+    }
+    else if(fUltraDistance < 5.0f) /*Distance < 5Cm*/
+    {
+        if(ucFirstUltraDetectionFlag == 0u)
+        {
+            u8nuWirelessCmd = 'x'; /*Reverse*/
+            ucFirstUltraDetectionFlag = 1u;
+            ucWarningUltraFlag = 1u;
+        }
+    }
+    else
+    {    
+        if(ucWarningFlag == 1u)
+        {
+            gu32nuAscRxData = 'w';
+            ucWarningFlag = 0u;
+            ucFirstDetectionFlag = 0u;
+        }
+
+        if(ucWarningUltraFlag == 1u)
+        {
+            gu32nuAscRxData = 'w';
+            ucWarningUltraFlag = 0u;
+            ucFirstUltraDetectionFlag = 0u;
+        }
+        
+        u8nuWirelessCmd = (uint8_t)gu32nuAscRxData;
+    }
+      
+    if(u8nuWirelessCmd == 'w')    /*Forward*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_FWD);
+        Unit_MotorRearDirectionCtl(MOTOR_FWD);
+    }
+    else if(u8nuWirelessCmd == 'd') /*TurnRight*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_TURN_RIGHT);    
+        Unit_MotorRearDirectionCtl(MOTOR_TURN_RIGHT);
+    }
+    else if(u8nuWirelessCmd == 'a') /*TurnLeft*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_TURN_LEFT);    
+        Unit_MotorRearDirectionCtl(MOTOR_TURN_LEFT);
+    }
+    else if(u8nuWirelessCmd == 'x') /*Reverse*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_REVERSE);    
+        Unit_MotorRearDirectionCtl(MOTOR_REVERSE);
+    }    
+    else if(u8nuWirelessCmd == 's') /*Stop*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_STOP);    
+        Unit_MotorRearDirectionCtl(MOTOR_STOP);
+    }
+    else
+    {
+        /*No Code*/
+    }  
+
+    /*Setting Duty*/ 
+    DrvGtmPwmTest(fDuty,fDuty,fDuty,fDuty);
+}
+
+
+#if 0
+void Unit_WirelessControl(void)
+{
+    uint8_t u8nuWirelessCmd = 0u;
+    SensorAdcRaw* pstSensorAdcRaw = MidAdc_GetAdcGroup0SenseRaw();
+    static uint8_t ucWarningFlag = 0u;
+    static uint8_t ucFirstDetectionFlag = 0u;
+    
+    if(pstSensorAdcRaw->InfRaySense1_Raw >= 2200u || pstSensorAdcRaw->InfRaySense2_Raw >= 2200u)
+    {
+        if(ucFirstDetectionFlag == 0u)
+        {
+            if(pstSensorAdcRaw->InfRaySense1_Raw > pstSensorAdcRaw->InfRaySense2_Raw) 
+            {
+                u8nuWirelessCmd = 'a'; /*TurnLeft*/
+            }
+            else
+            {
+                u8nuWirelessCmd = 'd'; /*TurnRight*/
+            }
+            ucFirstDetectionFlag = 1u;
+            ucWarningFlag = 1u;
+        }
+    }
+    else
+    {    
+        if(ucWarningFlag == 1u)
+        {
+            gu32nuAscRxData = 'w';
+            ucWarningFlag = 0u;
+            ucFirstDetectionFlag = 0u;
+        }
+        u8nuWirelessCmd = (uint8_t)gu32nuAscRxData;
+    }
+      
+    if(u8nuWirelessCmd == 'w')    /*Forward*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_FWD);
+        Unit_MotorRearDirectionCtl(MOTOR_FWD);
+    }
+    else if(u8nuWirelessCmd == 'd') /*TurnRight*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_TURN_RIGHT);    
+        Unit_MotorRearDirectionCtl(MOTOR_TURN_RIGHT);
+    }
+    else if(u8nuWirelessCmd == 'a') /*TurnLeft*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_TURN_LEFT);    
+        Unit_MotorRearDirectionCtl(MOTOR_TURN_LEFT);
+    }
+    else if(u8nuWirelessCmd == 'x') /*Reverse*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_REVERSE);    
+        Unit_MotorRearDirectionCtl(MOTOR_REVERSE);
+    }    
+    else if(u8nuWirelessCmd == 's') /*Stop*/
+    {
+        Unit_MotorFrontDirectionCtl(MOTOR_STOP);    
+        Unit_MotorRearDirectionCtl(MOTOR_STOP);
+    }
+    else
+    {
+        /*No Code*/
+    }  
+}
+#endif
 
 void Unit_MotorFrontDirectionCtl(MOTOR_CMD_TYPE param_DirectionType)
 {

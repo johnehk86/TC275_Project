@@ -33,6 +33,7 @@ extern void MidDio_SetRearIn2(uint8_t param_SetIn2);
 extern void MidDio_SetRearIn3(uint8_t param_SetIn3);
 extern void MidDio_SetRearIn4(uint8_t param_SetIn4);
 
+extern void MidDio_SetUltraTrig(uint8_t param_SetUltraTrig);
 
 
 

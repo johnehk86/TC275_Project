@@ -1,28 +1,20 @@
-#ifndef MOTORCONTROL_H
-#define MOTORCONTROL_H
+#ifndef MIDADC_H
+#define MIDADC_H
 
 /*----------------------------------------------------------------*/
 /*                        Include Header File                          */
 /*----------------------------------------------------------------*/
 #include "Ifx_Types.h"
+#include "DrvAdc.h"
 
 /*----------------------------------------------------------------*/
 /*                        Define                                        */
 /*----------------------------------------------------------------*/
-
+#define MidAdc_GetAdcGroup0SenseRaw()     (&stSensorAdcRaw)
 
 /*----------------------------------------------------------------*/
 /*                        Typedefs                                    */
 /*----------------------------------------------------------------*/
-typedef enum t_MOTOR_CMD_TYPE
-{
-    MOTOR_STOP = 0u,
-    MOTOR_FWD,
-    MOTOR_TURN_RIGHT,
-    MOTOR_TURN_LEFT,
-    MOTOR_REVERSE,
-    MOTOR_CMD_MAX
-}MOTOR_CMD_TYPE;
 
 
 /*----------------------------------------------------------------*/
@@ -33,13 +25,8 @@ typedef enum t_MOTOR_CMD_TYPE
 /*----------------------------------------------------------------*/
 /*                        Global Function Prototype                  */
 /*----------------------------------------------------------------*/
-extern void MotorFeedbackController(void);
-extern void Unit_WirelessControl(void);
-extern void Unit_MotorFrontDirectionCtl(MOTOR_CMD_TYPE param_DirectionType);
-extern void Unit_MotorRearDirectionCtl(MOTOR_CMD_TYPE param_DirectionType);
-extern void Unit_TestControl(void);
 
-extern void Unit_UltraSenseTrig(void);
-extern void Unit_UltraTest(void);
+
+
+
 #endif
-

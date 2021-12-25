@@ -125,3 +125,15 @@ void MidDio_SetRearIn4(uint8_t param_SetIn4)
     }
 }
 
+
+void MidDio_SetUltraTrig(uint8_t param_SetUltraTrig)
+{
+    if(param_SetUltraTrig == 0u)
+    {
+        DrvDio_SetPinLow(IfxPort_P33_7);
+    }
+    else
+    {
+        DrvDio_SetPinHigh(IfxPort_P33_7);
+    }
+}

@@ -19,30 +19,22 @@ typedef struct
     IfxVadc_Adc_Group adcGroup;
 } App_VadcAutoScan;
 
-typedef struct
-{
-    IfxVadc_Adc vadc;   /* VADC handle*/
-    IfxVadc_Adc_Group adcGroup;
-} App_VadcBackgroundScan;
-
 
 /*----------------------------------------------------------------*/
 /*                        Static Function Prototype                  */
 /*----------------------------------------------------------------*/
-static void DrvAdc0Init(void);
-static void DrvAdc1Init(void);
+static void DrvAdc_Group0Init(void);
+static void DrvAdc_Group0ChannelInit(uint8_t param_ChNum);
 
 /*----------------------------------------------------------------*/
 /*                        Variables                                    */
 /*----------------------------------------------------------------*/
 App_VadcAutoScan g_VadcAutoScan;
-App_VadcBackgroundScan g_VadcBackgroundScan;
 
-IfxVadc_Adc_Channel adc0Channel[5];
-IfxVadc_Adc_Channel adc1Channel[2];
+IfxVadc_Adc_Channel adc0Channel[ADC_GROUP0_MAX];
 
-uint32_t g_Vadc0Result[5] = {0u,};
-uint32_t g_Vadc1Result[2] = {0u,};
+SensorAdcRaw stSensorAdcRaw;
+
 
 /*----------------------------------------------------------------*/
 /*                        Functions                                    */
@@ -53,58 +45,30 @@ uint32_t g_Vadc1Result[2] = {0u,};
 
 
 /*---------------------Test Code--------------------------*/
-void VadcAutoScanDemo_run(void)
+void DrvAdc_GetAdcRawGroup0(void)
 {
-    uint32    chnIx;
+    Ifx_VADC_RES conversionResult;
 
-    for (chnIx = 0; chnIx < 5; ++chnIx)
-    {
-        /* wait for valid result */
-        Ifx_VADC_RES conversionResult;
+    /*Get Data*/
+    conversionResult = IfxVadc_Adc_getResult(&adc0Channel[ADC_GROUP0_CH1]);
+    stSensorAdcRaw.InfRaySense1_Raw = conversionResult.B.RESULT;
 
-        do
-        {
-            conversionResult = IfxVadc_Adc_getResult(&adc0Channel[chnIx]);
-        } while (!conversionResult.B.VF);
+    conversionResult = IfxVadc_Adc_getResult(&adc0Channel[ADC_GROUP0_CH2]);
+    stSensorAdcRaw.InfRaySense2_Raw = conversionResult.B.RESULT;
 
-        g_Vadc0Result[chnIx] = conversionResult.B.RESULT;
-    }
-
-    /* start autoscan */
+    /*Start Autoscan */
     IfxVadc_Adc_startScan(&g_VadcAutoScan.adcGroup);
 }
 
-void VadcBackgroundScanDemo_run(void)
-{
-    uint32    chnIx;
-
-    /* check results */
-    for (chnIx = 0; chnIx < 2; ++chnIx)
-    {
-        /* wait for valid result */
-        Ifx_VADC_RES conversionResult;
-
-        do
-        {
-            conversionResult = IfxVadc_Adc_getResult(&adc1Channel[chnIx]);
-        } while (!conversionResult.B.VF);
-
-         g_Vadc1Result[chnIx] = conversionResult.B.RESULT;
-    }
-}
 
 /*---------------------Init Function--------------------------*/
 void DrvAdcInit(void)
 {
-    DrvAdc0Init();
-    DrvAdc1Init();
+    DrvAdc_Group0Init();
 }
 
-static void DrvAdc0Init(void)
+static void DrvAdc_Group0Init(void)
 {
-    uint32    chnIx;
-    IfxVadc_Adc_ChannelConfig adcChannelConfig[5];    /* create channel config */
-
     /* VADC Configuration */
 
     /* create configuration */
@@ -135,26 +99,32 @@ static void DrvAdc0Init(void)
     /*IfxVadc_Adc_Group adcGroup;*/    //declared globally
     IfxVadc_Adc_initGroup(&g_VadcAutoScan.adcGroup, &adcGroupConfig);
 
-    for (chnIx = 0; chnIx < 5; ++chnIx)
-    {
-        IfxVadc_Adc_initChannelConfig(&adcChannelConfig[chnIx], &g_VadcAutoScan.adcGroup);
-
-        adcChannelConfig[chnIx].channelId      = (IfxVadc_ChannelId)(chnIx);
-        adcChannelConfig[chnIx].resultRegister = (IfxVadc_ChannelResult)(chnIx);  /* use dedicated result register */
-
-        /* initialize the channel */
-        IfxVadc_Adc_initChannel(&adc0Channel[chnIx], &adcChannelConfig[chnIx]);
-
-        /* add to scan */
-        unsigned channels = (1 << adcChannelConfig[chnIx].channelId);
-        unsigned mask     = channels;
-        IfxVadc_Adc_setScan(&g_VadcAutoScan.adcGroup, channels, mask);
-    }
+    /*ADC Channel Init*/
+    DrvAdc_Group0ChannelInit(ADC_GROUP0_CH1);
+    DrvAdc_Group0ChannelInit(ADC_GROUP0_CH2);
 
     /* start autoscan */
     IfxVadc_Adc_startScan(&g_VadcAutoScan.adcGroup);
 }
 
+static void DrvAdc_Group0ChannelInit(uint8_t param_ChNum)
+{
+    IfxVadc_Adc_ChannelConfig adcChannelConfigInfo;
+    uint32_t ulTemp = ((uint32_t)1u << param_ChNum);
+    
+    IfxVadc_Adc_initChannelConfig(&adcChannelConfigInfo, &g_VadcAutoScan.adcGroup);
+
+    adcChannelConfigInfo.channelId      = (IfxVadc_ChannelId)(param_ChNum);
+    adcChannelConfigInfo.resultRegister = (IfxVadc_ChannelResult)(param_ChNum); 
+    
+    /* initialize the channel */
+    IfxVadc_Adc_initChannel(&adc0Channel[param_ChNum], &adcChannelConfigInfo);
+
+    /* add to scan */
+    IfxVadc_Adc_setScan(&g_VadcAutoScan.adcGroup, ulTemp, ulTemp);
+}
+
+#if 0
 static void DrvAdc1Init(void)
 {
     uint32    chnIx;
@@ -209,3 +179,24 @@ static void DrvAdc1Init(void)
     /* start scan */
     IfxVadc_Adc_startBackgroundScan(&g_VadcBackgroundScan.vadc);
 }
+
+void VadcBackgroundScanDemo_run(void)
+{
+    uint32    chnIx;
+
+    /* check results */
+    for (chnIx = 0; chnIx < 2; ++chnIx)
+    {
+        /* wait for valid result */
+        Ifx_VADC_RES conversionResult;
+
+        do
+        {
+            conversionResult = IfxVadc_Adc_getResult(&adc1Channel[chnIx]);
+        } while (!conversionResult.B.VF);
+
+         g_Vadc1Result[chnIx] = conversionResult.B.RESULT;
+    }
+}
+
+#endif

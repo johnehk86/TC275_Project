@@ -14,23 +14,34 @@
 /*----------------------------------------------------------------*/
 /*                        Typedefs                                    */
 /*----------------------------------------------------------------*/
-
-
+typedef enum
+{
+  ADC_GROUP0_CH0 = 0u,
+  ADC_GROUP0_CH1,
+  ADC_GROUP0_CH2,
+  ADC_GROUP0_CH3,
+  ADC_GROUP0_CH4,
+  ADC_GROUP0_CH5,
+  ADC_GROUP0_CH6,
+  ADC_GROUP0_CH7,
+  ADC_GROUP0_MAX
+}ADC_GROUP0;
+  
+typedef struct
+{
+    uint32_t InfRaySense1_Raw;
+    uint32_t InfRaySense2_Raw;
+}SensorAdcRaw;
 /*----------------------------------------------------------------*/
 /*                        Variables                                    */
 /*----------------------------------------------------------------*/
-
+extern SensorAdcRaw stSensorAdcRaw;
 
 /*----------------------------------------------------------------*/
 /*                        Global Function Prototype                  */
 /*----------------------------------------------------------------*/
-
-/*---------------------Test Code--------------------------*/
-void VadcAutoScanDemo_run(void);
-void VadcBackgroundScanDemo_run(void);
-
-/*---------------------Init Function--------------------------*/
-void DrvAdcInit(void);
+extern void DrvAdcInit(void);
+extern void DrvAdc_GetAdcRawGroup0(void);
 
 
 #endif

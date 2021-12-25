@@ -74,4 +74,8 @@ void DrvDioInit(void)
     /*P11_9    Digital Output*/
     IfxPort_setPinModeOutput(IfxPort_P11_9.port, IfxPort_P11_9.pinIndex, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
     IfxPort_setPinLow(IfxPort_P11_9.port, IfxPort_P11_9.pinIndex);
+
+    /*P33_7    Digital Output*/
+    IfxPort_setPinModeOutput(IfxPort_P33_7.port, IfxPort_P33_7.pinIndex, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
+    IfxPort_setPinLow(IfxPort_P33_7.port, IfxPort_P33_7.pinIndex);
 }
